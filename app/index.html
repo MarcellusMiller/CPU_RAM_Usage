@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uso de CPU e Memória</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            background-color: black; 
+            color: lime; 
+        }
+        #output { 
+            white-space: pre; 
+            font-size: 24px; /* Aumenta o tamanho da fonte */
+            margin: 20px;
+        }
+        .bar {
+            font-size: 20px; /* Tamanho da barra */
+            width: 100%;
+        }
+        #forUserMessage {
+            font-size: 24px;
+            margin: 20px;
+            height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div id="forUserMessage"></div>
+    <div id="output"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();  // Cria a conexão com o servidor
+        const output = document.getElementById('output');
+        const userMessage = document.getElementById('forUserMessage');
+        
+        let message = "Hello user, see how much of your hardware is being used";
+        let currentText = "";
+        let charIndex = 0;
+        let isDeleting = false;
+
+        // Função para criar a animação de digitação/apagamento
+        function typeWriter() {
+            if (!isDeleting && charIndex < message.length) {
+                currentText += message.charAt(charIndex);
+                charIndex++;
+                userMessage.textContent = currentText;
+            } else if (isDeleting && charIndex > 0) {
+                currentText = currentText.slice(0, -1);
+                charIndex--;
+                userMessage.textContent = currentText;
+            }
+
+            if (charIndex === message.length) {
+                setTimeout(() => isDeleting = true, 2000);  // Espera 2 segundos antes de começar a apagar
+            } else if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+            }
+
+            setTimeout(typeWriter, isDeleting ? 50 : 100);  // Controle da velocidade de digitação/apagamento
+        }
+
+        // Inicializa a animação de texto
+        typeWriter();
+
+        // Recebe os dados de uso de CPU e Memória
+        socket.on('usage', (data) => {
+            const cpuUsage = data.cpu_usage;
+            const memUsage = data.mem_usage;
+            
+            // Cria a barra para CPU
+            const cpuBar = createBar(cpuUsage);
+            // Cria a barra para Memória
+            const memBar = createBar(memUsage);
+
+            output.innerHTML = `
+                <div>CPU Usage: ${cpuUsage.toFixed(2)}% ${cpuBar}</div>
+                <div>MEM Usage: ${memUsage.toFixed(2)}% ${memBar}</div>
+            `;
+        });
+
+        // Função para criar barra de uso
+        function createBar(usage) {
+            const filled = '█'; // Símbolo para uso
+            const empty = '-';   // Símbolo para livre
+            const totalBars = 50; // Total de caracteres na barra
+
+            const filledBars = Math.round((usage / 100) * totalBars); // Calcula a quantidade preenchida
+            const emptyBars = totalBars - filledBars; // Calcula a quantidade livre
+
+            return filled.repeat(filledBars) + empty.repeat(emptyBars); // Retorna a barra
+        }
+    </script>
+</body>
+</html>
